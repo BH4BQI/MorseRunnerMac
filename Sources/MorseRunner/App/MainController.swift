@@ -475,7 +475,7 @@ public final class MainController: NSObject, NSWindowDelegate,
         task.resume()
     }
 
-    private func showAlert(_ text: String) {
+    func showAlert(_ text: String) {
         let a = NSAlert(); a.messageText = text; a.addButton(withTitle: "OK")
         a.beginSheetModal(for: window) { _ in }
     }

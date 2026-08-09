@@ -568,6 +568,47 @@ extension MainController {
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: dir.path)
     }
 
+    /// Download the latest MASTER.DTA call database from the URL in
+    /// Settings.shared.callDatabaseURL, write it to ~/Library/Application
+    /// Support/MorseRunner/MASTER.DTA, then reload the call list.
+    @objc func downloadLatestCallDatabase() {
+        // Don't reload the call list while a contest is running — it mutates
+        // the `calls` array and could crash the simulation.
+        guard Settings.shared.runMode == .stop else {
+            showAlert("Please stop the contest before updating the call database.")
+            return
+        }
+        guard let url = URL(string: Settings.shared.callDatabaseURL) else {
+            showAlert("Invalid call database URL.")
+            return
+        }
+        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                guard let data = data, error == nil else {
+                    self?.showAlert("Download failed. Check your network connection.")
+                    return
+                }
+                let httpOK = (response as? HTTPURLResponse)?.statusCode ?? 0
+                guard httpOK == 200 else {
+                    self?.showAlert("Download failed (HTTP \(httpOK)).")
+                    return
+                }
+                // Write atomically to avoid a half-written file on crash.
+                let dest = FileManager.default.applicationSupportDirectory
+                    .appendingPathComponent("MASTER.DTA")
+                do {
+                    try data.write(to: dest, options: .atomic)
+                    CallList.shared.load()
+                    let count = CallList.shared.calls.count
+                    self?.showAlert("Call database updated successfully (\(count) calls).")
+                } catch {
+                    self?.showAlert("Failed to write the downloaded file: \(error.localizedDescription)")
+                }
+            }
+        }
+        task.resume()
+    }
+
     // MARK: Settings submenu actions
     /// Theme: 0 = follow system, 1 = light, 2 = dark. Applied to the app's
     /// appearance and persisted in Settings.
@@ -702,6 +743,8 @@ extension MainController {
         fileMenu.addItem(.separator())
         let revealItem = fileMenu.addItem(withTitle: "Reveal Settings Folder", action: #selector(revealSettingsFolder), keyEquivalent: "")
         revealItem.target = self
+        let dlItem = fileMenu.addItem(withTitle: "Download Latest Call Database", action: #selector(downloadLatestCallDatabase), keyEquivalent: "")
+        dlItem.target = self
         fileItem.submenu = fileMenu
         mainMenu.addItem(fileItem)
 
