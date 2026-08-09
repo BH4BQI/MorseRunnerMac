@@ -643,6 +643,7 @@ extension MainController {
     }
     @objc func setActivityMenu(_ sender: NSMenuItem) { setActivity(sender.tag) }
     @objc func setDurationMenu(_ sender: NSMenuItem) { setDuration(sender.tag) }
+    @objc func setCompDurationMenu(_ sender: NSMenuItem) { setCompDuration(sender.tag) }
     @objc func toggleQRN() { qrnCheckbox.state = (qrnCheckbox.state == .on) ? .off : .on; checkboxChanged() }
     @objc func toggleQRM() { qrmCheckbox.state = (qrmCheckbox.state == .on) ? .off : .on; checkboxChanged() }
     @objc func toggleQSB() { qsbCheckbox.state = (qsbCheckbox.state == .on) ? .off : .on; checkboxChanged() }
@@ -792,6 +793,15 @@ extension MainController {
                            keyEquivalent: "").tag = d
         }
         durItem.submenu = durMenu
+        // Competition Duration submenu — the default session length for WPX
+        // and HST modes. Stored as CompetitionDuration in the INI.
+        let compDurItem = settingsMenu.addItem(withTitle: "Competition Duration", action: nil, keyEquivalent: "")
+        let compDurMenu = NSMenu(title: "Competition Duration")
+        for d in [5, 10, 15, 30, 60, 90, 120] {
+            compDurMenu.addItem(withTitle: "\(d) min", action: #selector(setCompDurationMenu(_:)),
+                                keyEquivalent: "").tag = d
+        }
+        compDurItem.submenu = compDurMenu
         settingsMenu.addItem(withTitle: "HST Operator…", action: #selector(editOperator), keyEquivalent: "")
         settingsMenu.addItem(.separator())
         let infoItem = settingsMenu.addItem(withTitle: "Show Callsign Info", action: #selector(toggleCallsignInfo), keyEquivalent: "")

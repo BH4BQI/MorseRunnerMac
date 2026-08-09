@@ -80,16 +80,16 @@ enum RunButtonTests {
             return expectTrue(Tst.fStopPressed, "dropdown Stop sets fStopPressed")
         },
 
-        TestCase("WPX mode respects the user's Duration setting") {
-            // The user sets Duration=10 via the menu; WPX must use that value,
-            // not force compDuration (60).
+        TestCase("WPX mode uses the Competition Duration setting") {
+            // WPX uses CompetitionDuration (set via Settings → Competition
+            // Duration menu), not the regular Duration.
             let c = makeController()
             Settings.shared.runMode = .stop
             Settings.shared.duration = 10
-            Settings.shared.compDuration = 60
+            Settings.shared.compDuration = 15
             c.run(.wpx)
-            return expectEqual(Settings.shared.duration, 10,
-                "WPX should keep the user's Duration (10), not override with compDuration (60)")
+            return expectEqual(Settings.shared.duration, 15,
+                "WPX should use CompetitionDuration (15)")
         },
     ])
 }

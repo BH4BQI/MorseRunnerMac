@@ -177,6 +177,20 @@ public final class MainController: NSObject, NSWindowDelegate,
         histo.reCalc(value)
     }
 
+    /// Set the competition duration (WPX / HST default session length).
+    /// Persisted as CompetitionDuration in the INI and used when a WPX or HST
+    /// session starts. If the app is currently stopped, also update the visible
+    /// duration field so the user sees the change immediately.
+    public func setCompDuration(_ value: Int) {
+        let clamped = max(1, min(240, value))
+        Settings.shared.compDuration = clamped
+        if Settings.shared.runMode == .stop {
+            Settings.shared.duration = clamped
+            durationField.integerValue = clamped
+            histo.reCalc(clamped)
+        }
+    }
+
     func readCheckboxes() {
         Settings.shared.qrn = qrnCheckbox.state == .on
         Settings.shared.qrm = qrmCheckbox.state == .on
@@ -320,16 +334,17 @@ public final class MainController: NSObject, NSWindowDelegate,
         if value == .wpx {
             qrnCheckbox.state = .on; qrmCheckbox.state = .on
             qsbCheckbox.state = .on; flutterCheckbox.state = .on; lidsCheckbox.state = .on
-            // Respect the user's chosen Duration (set via the Settings → Duration
-            // menu or the duration field). The field already shows the right value
-            // since it's loaded from Settings.shared.duration at startup.
-            durationField.integerValue = Settings.shared.duration
+            // Use the competition duration (set via Settings → Competition
+            // Duration menu or CompetitionDuration in the INI).
+            Settings.shared.duration = Settings.shared.compDuration
+            durationField.integerValue = Settings.shared.compDuration
             histo.reCalc(Settings.shared.duration)
             readCheckboxes()
         } else if value == .hst {
             qrnCheckbox.state = .off; qrmCheckbox.state = .off
             qsbCheckbox.state = .off; flutterCheckbox.state = .off; lidsCheckbox.state = .off
-            durationField.integerValue = Settings.shared.duration
+            Settings.shared.duration = Settings.shared.compDuration
+            durationField.integerValue = Settings.shared.compDuration
             histo.reCalc(Settings.shared.duration)
             readCheckboxes()
         }
