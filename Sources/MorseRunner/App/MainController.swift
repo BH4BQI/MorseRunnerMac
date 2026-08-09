@@ -103,6 +103,9 @@ public final class MainController: NSObject, NSWindowDelegate,
         audioEngine.provider = contest
 
         // load resources & settings
+        // Seed bundled data files into ~/Library/Application Support/MorseRunner/
+        // on first run so the user can find/edit/replace them.
+        Settings.shared.seedUserDataIfNeeded()
         LoadCallList()
         ArrlList.shared.loadIfNeeded()
         Ini.load(into: self)

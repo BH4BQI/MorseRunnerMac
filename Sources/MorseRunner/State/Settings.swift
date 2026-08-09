@@ -137,6 +137,28 @@ extension Settings {
         return sections
     }
 
+    /// On first run, copy the bundled data files (INI, MASTER.DTA, ARRL.LIST)
+    /// into `~/Library/Application Support/MorseRunner/` so the user can find,
+    /// edit, and replace them in the standard macOS location. Files that already
+    /// exist in the user directory are never overwritten (user edits preserved).
+    /// Call this once at launch, before load().
+    public func seedUserDataIfNeeded() {
+        let dir = FileManager.default.applicationSupportDirectory
+        let fm = FileManager.default
+        // The three resources shipped in the app bundle.
+        let resources: [(bundle: String, ext: String, fileName: String)] = [
+            ("MorseRunner", "ini", "MorseRunner.ini"),
+            ("MASTER",      "DTA", "MASTER.DTA"),
+            ("ARRL",        "LIST", "ARRL.LIST"),
+        ]
+        for (name, ext, fileName) in resources {
+            let dest = dir.appendingPathComponent(fileName)
+            guard !fm.fileExists(atPath: dest.path) else { continue }  // don't overwrite
+            guard let src = Bundle.main.url(forResource: name, withExtension: ext) else { continue }
+            try? fm.copyItem(at: src, to: dest)
+        }
+    }
+
     /// Load defaults from the bundled INI, then overlay the user INI if present.
     public func load(into sync: SettingsSynchronizer? = nil) {
         var sections: [String: [String: String]] = [:]

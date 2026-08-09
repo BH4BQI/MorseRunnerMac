@@ -23,8 +23,19 @@ public final class CallList {
 
     public func load() {
         calls.removeAll()
-        guard let url = Bundle.main.url(forResource: "MASTER", withExtension: "DTA"),
-              let data = try? Data(contentsOf: url) else {
+        // Prefer the user-replaceable copy in ~/Library/Application Support/MorseRunner/,
+        // fall back to the bundled read-only copy.
+        let dir = FileManager.default.applicationSupportDirectory
+        let userURL = dir.appendingPathComponent("MASTER.DTA")
+        let url: URL
+        if FileManager.default.fileExists(atPath: userURL.path) {
+            url = userURL
+        } else if let bundled = Bundle.main.url(forResource: "MASTER", withExtension: "DTA") {
+            url = bundled
+        } else {
+            return
+        }
+        guard let data = try? Data(contentsOf: url) else {
             return
         }
         let indexBytes = CallList.indexSize * 4

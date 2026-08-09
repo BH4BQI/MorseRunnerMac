@@ -561,6 +561,13 @@ extension MainController {
         refreshMenuStates()
     }
 
+    /// Open ~/Library/Application Support/MorseRunner/ in Finder so the user
+    /// can find and edit MorseRunner.ini, replace MASTER.DTA / ARRL.LIST, etc.
+    @objc func revealSettingsFolder() {
+        let dir = FileManager.default.applicationSupportDirectory
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: dir.path)
+    }
+
     // MARK: Settings submenu actions
     /// Theme: 0 = follow system, 1 = light, 2 = dark. Applied to the app's
     /// appearance and persisted in Settings.
@@ -683,7 +690,7 @@ extension MainController {
         appMenuItem.submenu = appMenu
         mainMenu.addItem(appMenuItem)
 
-        // File menu — score table, hi-score web page, audio recording, exit.
+        // File menu — score table, hi-score web page, audio recording, settings folder, exit.
         let fileItem = NSMenuItem()
         let fileMenu = NSMenu(title: "File")
         fileMenu.addItem(withTitle: "View Score Table", action: #selector(viewScoreTable), keyEquivalent: "")
@@ -691,6 +698,9 @@ extension MainController {
         fileMenu.addItem(.separator())
         let recItem = fileMenu.addItem(withTitle: "Audio Recording Enabled", action: #selector(toggleRecording), keyEquivalent: "")
         recItem.target = self
+        fileMenu.addItem(.separator())
+        let revealItem = fileMenu.addItem(withTitle: "Reveal Settings Folder", action: #selector(revealSettingsFolder), keyEquivalent: "")
+        revealItem.target = self
         fileItem.submenu = fileMenu
         mainMenu.addItem(fileItem)
 

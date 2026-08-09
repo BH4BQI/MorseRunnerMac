@@ -40,8 +40,19 @@ public final class ArrlList {
     public func loadIfNeeded() {
         guard !loaded else { return }
         loaded = true
-        guard let url = Bundle.main.url(forResource: "ARRL", withExtension: "LIST"),
-              let text = try? String(contentsOf: url, encoding: .utf8) else {
+        // Prefer the user-replaceable copy in ~/Library/Application Support/MorseRunner/,
+        // fall back to the bundled read-only copy.
+        let dir = FileManager.default.applicationSupportDirectory
+        let userURL = dir.appendingPathComponent("ARRL.LIST")
+        let url: URL
+        if FileManager.default.fileExists(atPath: userURL.path) {
+            url = userURL
+        } else if let bundled = Bundle.main.url(forResource: "ARRL", withExtension: "LIST") {
+            url = bundled
+        } else {
+            return
+        }
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else {
             return
         }
         // skip the two-line header (title + url)
