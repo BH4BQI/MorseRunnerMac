@@ -58,6 +58,8 @@ public final class Settings {
     public var showCallsignInfo: Bool = true
     /// URL for downloading the latest MASTER.DTA call database.
     public var callDatabaseURL: String = "https://supercheckpartial.com/downloads/MASTER.DTA"
+    /// URL for downloading the latest ARRL DXCC entity list (text format).
+    public var dxccListURL: String = "https://www.arrl.org/files/file/DXCC/Current_Deleted.txt"
     /// UI theme: 0 = follow system, 1 = light, 2 = dark.
     public var theme: Int = 0
     /// UI zoom level: 0 = 100%, 1 = 150%, 2 = 200%.
@@ -229,6 +231,7 @@ extension Settings {
         postMethod = (sStr(sys, "PostMethod") ?? "POST").uppercased()
         showCallsignInfo = sBool(sys, "ShowCallsignInfo") ?? showCallsignInfo
         callDatabaseURL = sStr(sys, "CallDatabaseURL") ?? callDatabaseURL
+        dxccListURL = sStr(sys, "DXCCListURL") ?? dxccListURL
         theme = sInt(sys, "Theme") ?? theme
         zoom = sInt(sys, "Zoom") ?? zoom
 
@@ -256,6 +259,7 @@ extension Settings {
         lines.append("SubmitHiScoreURL=\(submitHiScoreURL)")
         lines.append("ShowCallsignInfo=\(b2i(showCallsignInfo))")
         lines.append("CallDatabaseURL=\(callDatabaseURL)")
+        lines.append("DXCCListURL=\(dxccListURL)")
         lines.append("Theme=\(theme)")
         lines.append("Zoom=\(zoom)")
         lines.append("[\(SEC_STN)]")

@@ -619,6 +619,57 @@ extension MainController {
         task.resume()
     }
 
+    /// Download the latest ARRL DXCC entity list (text format), convert it to
+    /// ARRL.LIST format, write to ~/Library/Application Support/MorseRunner/,
+    /// then reload. The source URL is configurable via DXCCListURL in the INI.
+    @objc func downloadLatestDXCCList() {
+        guard Settings.shared.runMode == .stop else {
+            showAlert("Please stop the contest before updating the DXCC list.")
+            return
+        }
+        var urlStr = Settings.shared.dxccListURL
+        if urlStr.lowercased().hasPrefix("http://") {
+            urlStr = "https://" + urlStr.dropFirst(7)
+        }
+        guard let url = URL(string: urlStr) else {
+            showAlert("Invalid DXCC list URL: \(urlStr)")
+            return
+        }
+        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self?.showAlert("Download failed: \(error.localizedDescription)")
+                    return
+                }
+                guard let data = data, let text = String(data: data, encoding: .utf8) else {
+                    self?.showAlert("Download failed: unable to decode the file as text.")
+                    return
+                }
+                let httpOK = (response as? HTTPURLResponse)?.statusCode ?? 0
+                guard httpOK == 200 else {
+                    self?.showAlert("Download failed (HTTP \(httpOK)).")
+                    return
+                }
+                // Convert the ARRL text format to our semicolon-delimited format.
+                guard let output = ArrlList.generateFromTXT(text) else {
+                    self?.showAlert("Failed to parse the downloaded DXCC list. The file format may have changed.")
+                    return
+                }
+                let dest = FileManager.default.applicationSupportDirectory
+                    .appendingPathComponent("ARRL.LIST")
+                do {
+                    try output.write(to: dest, atomically: true, encoding: .utf8)
+                    ArrlList.shared.reload()
+                    let count = ArrlList.shared.count
+                    self?.showAlert("DXCC list updated successfully (\(count) entities).")
+                } catch {
+                    self?.showAlert("Failed to write the DXCC list: \(error.localizedDescription)")
+                }
+            }
+        }
+        task.resume()
+    }
+
     // MARK: Settings submenu actions
     /// Theme: 0 = follow system, 1 = light, 2 = dark. Applied to the app's
     /// appearance and persisted in Settings.
@@ -755,6 +806,8 @@ extension MainController {
         revealItem.target = self
         let dlItem = fileMenu.addItem(withTitle: "Download Latest Call Database", action: #selector(downloadLatestCallDatabase), keyEquivalent: "")
         dlItem.target = self
+        let dxccItem = fileMenu.addItem(withTitle: "Download Latest DXCC List", action: #selector(downloadLatestDXCCList), keyEquivalent: "")
+        dxccItem.target = self
         fileItem.submenu = fileMenu
         mainMenu.addItem(fileItem)
 
