@@ -320,19 +320,16 @@ public final class MainController: NSObject, NSWindowDelegate,
         if value == .wpx {
             qrnCheckbox.state = .on; qrmCheckbox.state = .on
             qsbCheckbox.state = .on; flutterCheckbox.state = .on; lidsCheckbox.state = .on
-            // Use the competition duration AND sync Settings.shared.duration so
-            // the countdown clock and the actual session length agree (the
-            // original Delphi set SpinEdit2.Value which fired its OnChange →
-            // Ini.Duration; here we update both the field and the setting).
-            durationField.integerValue = Settings.shared.compDuration
-            Settings.shared.duration = Settings.shared.compDuration
+            // Respect the user's chosen Duration (set via the Settings → Duration
+            // menu or the duration field). The field already shows the right value
+            // since it's loaded from Settings.shared.duration at startup.
+            durationField.integerValue = Settings.shared.duration
             histo.reCalc(Settings.shared.duration)
             readCheckboxes()
         } else if value == .hst {
             qrnCheckbox.state = .off; qrmCheckbox.state = .off
             qsbCheckbox.state = .off; flutterCheckbox.state = .off; lidsCheckbox.state = .off
-            durationField.integerValue = Settings.shared.compDuration
-            Settings.shared.duration = Settings.shared.compDuration
+            durationField.integerValue = Settings.shared.duration
             histo.reCalc(Settings.shared.duration)
             readCheckboxes()
         }

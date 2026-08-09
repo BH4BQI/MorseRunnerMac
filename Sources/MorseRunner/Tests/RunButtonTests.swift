@@ -79,6 +79,18 @@ enum RunButtonTests {
             c.runMenuClicked(item)
             return expectTrue(Tst.fStopPressed, "dropdown Stop sets fStopPressed")
         },
+
+        TestCase("WPX mode respects the user's Duration setting") {
+            // The user sets Duration=10 via the menu; WPX must use that value,
+            // not force compDuration (60).
+            let c = makeController()
+            Settings.shared.runMode = .stop
+            Settings.shared.duration = 10
+            Settings.shared.compDuration = 60
+            c.run(.wpx)
+            return expectEqual(Settings.shared.duration, 10,
+                "WPX should keep the user's Duration (10), not override with compDuration (60)")
+        },
     ])
 }
 
