@@ -62,6 +62,10 @@ public final class MainController: NSObject, NSWindowDelegate,
     var runArrowBtn: NSButton!
     var runModeMenu: NSMenu?
     var infoBar: NSTextField!
+    /// Strong reference to the score dialog so its button targets (self) stay
+    /// alive while the sheet is shown. Without this the controller is freed
+    /// when popupScoreWpx returns, making the buttons unresponsive.
+    var scoreDialog: ScoreDialog?
     // title block (shown when stopped, hidden during run)
     var titleLabels: [NSView] = []
     var logScrollView: NSScrollView?
@@ -313,12 +317,20 @@ public final class MainController: NSObject, NSWindowDelegate,
         if value == .wpx {
             qrnCheckbox.state = .on; qrmCheckbox.state = .on
             qsbCheckbox.state = .on; flutterCheckbox.state = .on; lidsCheckbox.state = .on
+            // Use the competition duration AND sync Settings.shared.duration so
+            // the countdown clock and the actual session length agree (the
+            // original Delphi set SpinEdit2.Value which fired its OnChange →
+            // Ini.Duration; here we update both the field and the setting).
             durationField.integerValue = Settings.shared.compDuration
+            Settings.shared.duration = Settings.shared.compDuration
+            histo.reCalc(Settings.shared.duration)
             readCheckboxes()
         } else if value == .hst {
             qrnCheckbox.state = .off; qrmCheckbox.state = .off
             qsbCheckbox.state = .off; flutterCheckbox.state = .off; lidsCheckbox.state = .off
             durationField.integerValue = Settings.shared.compDuration
+            Settings.shared.duration = Settings.shared.compDuration
+            histo.reCalc(Settings.shared.duration)
             readCheckboxes()
         }
         activityField.isEnabled = value != .hst
@@ -403,7 +415,12 @@ public final class MainController: NSObject, NSWindowDelegate,
         let isHi = pts > Settings.shared.hiScore
         Settings.shared.hiScore = max(Settings.shared.hiScore, pts)
         let dlg = ScoreDialog(scoreString: s, isHiScore: isHi)
-        window.beginSheet(dlg.window!) { _ in }
+        // Keep a strong reference so the dialog (and its button targets) stay
+        // alive while the sheet is presented. Cleared in dismissScoreDialog.
+        scoreDialog = dlg
+        window.beginSheet(dlg.window!) { [weak self] _ in
+            self?.scoreDialog = nil
+        }
     }
 
     public func popupScoreHst() {

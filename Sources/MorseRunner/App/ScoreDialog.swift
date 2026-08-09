@@ -65,7 +65,12 @@ public final class ScoreDialog: NSWindowController {
     }
 
     @objc private func dismissDialog() {
-        window?.sheetParent?.endSheet(window!)
+        // End the sheet on the parent window, then close. Using sheetParent
+        // (not window?.sheetParent) is safer when the dialog is retained by
+        // an external owner.
+        if let parent = window?.sheetParent {
+            parent.endSheet(window!)
+        }
         window?.orderOut(nil)
     }
 }
