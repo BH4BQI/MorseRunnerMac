@@ -57,7 +57,7 @@ public final class Settings {
     public var postMethod: String = "POST"
     public var showCallsignInfo: Bool = true
     /// URL for downloading the latest MASTER.DTA call database.
-    public var callDatabaseURL: String = "http://supercheckpartial.com/downloads/MASTER.DTA"
+    public var callDatabaseURL: String = "https://supercheckpartial.com/downloads/MASTER.DTA"
     /// UI theme: 0 = follow system, 1 = light, 2 = dark.
     public var theme: Int = 0
     /// UI zoom level: 0 = 100%, 1 = 150%, 2 = 200%.

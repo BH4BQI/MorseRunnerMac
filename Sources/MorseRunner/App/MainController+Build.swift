@@ -578,14 +578,24 @@ extension MainController {
             showAlert("Please stop the contest before updating the call database.")
             return
         }
-        guard let url = URL(string: Settings.shared.callDatabaseURL) else {
-            showAlert("Invalid call database URL.")
+        // Upgrade http:// to https:// so App Transport Security (ATS) doesn't
+        // block the request (macOS forbids plain HTTP by default).
+        var urlStr = Settings.shared.callDatabaseURL
+        if urlStr.lowercased().hasPrefix("http://") {
+            urlStr = "https://" + urlStr.dropFirst(7)
+        }
+        guard let url = URL(string: urlStr) else {
+            showAlert("Invalid call database URL: \(urlStr)")
             return
         }
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             DispatchQueue.main.async {
-                guard let data = data, error == nil else {
-                    self?.showAlert("Download failed. Check your network connection.")
+                if let error = error {
+                    self?.showAlert("Download failed: \(error.localizedDescription)")
+                    return
+                }
+                guard let data = data else {
+                    self?.showAlert("Download failed: no data received.")
                     return
                 }
                 let httpOK = (response as? HTTPURLResponse)?.statusCode ?? 0
