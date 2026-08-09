@@ -31,6 +31,9 @@ public final class Modulator {
     private var sampleNo: Int = 0
     private var sn: [Float] = []
     private var cs: [Float] = []
+    /// Pre-allocated output buffer (reused every call — zero allocation on the
+    /// hot audio path).
+    private var resultBuf: [Float] = []
 
     public init() {
         _carrierFreq = 600
@@ -70,15 +73,14 @@ public final class Modulator {
 
     public func modulate(_ data: ReImArrays) -> [Float] {
         let n = data.re.count
-        var result = [Float](repeating: 0, count: n)
+        if resultBuf.count != n { resultBuf = [Float](repeating: 0, count: n) }
         let tableLen = cs.count
-        guard tableLen > 0 else { return result }
+        guard tableLen > 0 else { return resultBuf }
         for i in 0..<n {
-            // Result[i] := Re[i]*Sn[k] - Im[i]*Cs[k]
-            result[i] = data.re[i] * sn[sampleNo] - data.im[i] * cs[sampleNo]
+            resultBuf[i] = data.re[i] * sn[sampleNo] - data.im[i] * cs[sampleNo]
             sampleNo = (sampleNo + 1) % tableLen
         }
-        return result
+        return resultBuf
     }
 
     public func modulate(_ data: [Float]) -> [Float] {

@@ -150,8 +150,6 @@ public final class MainController: NSObject, NSWindowDelegate,
         bandwidthPopup.selectItem(at: idx)
         Tst.filt.points = Int((0.7 * Float(DEFAULTRATE) / Float(Settings.shared.bandWidth)).rounded())
         Tst.filt.gainDb = 10 * log10f(500.0 / Float(Settings.shared.bandWidth))
-        Tst.filt2.points = Tst.filt.points
-        Tst.filt2.gainDb = Tst.filt.gainDb
         updateRitIndicator()
     }
     public func setWpm(clamping wpm: Int, lo: Int, hi: Int) {

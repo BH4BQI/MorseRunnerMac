@@ -18,7 +18,6 @@ public final class Contest: AudioSampleProvider {
     public var stations: Stations
     public var agc: VolumeControl
     public var filt: MovingAverage
-    public var filt2: MovingAverage
     public var modul: Modulator
     public var ritPhase: Float = 0
     public var fStopPressed: Bool = false
@@ -36,11 +35,6 @@ public final class Contest: AudioSampleProvider {
         filt.passes = 3
         filt.samplesInInput = Settings.shared.bufSize
         filt.gainDb = 10 * log10f(500.0 / Float(Settings.shared.bandWidth))
-
-        filt2 = MovingAverage()
-        filt2.passes = filt.passes
-        filt2.samplesInInput = filt.samplesInInput
-        filt2.gainDb = filt.gainDb
 
         modul.samplesPerSec = DEFAULTRATE
         modul.carrierFreq = Float(Settings.shared.pitch)
@@ -76,13 +70,6 @@ public final class Contest: AudioSampleProvider {
             }
         }
         return result
-    }
-
-    public func swapFilters() {
-        let f = filt
-        filt = filt2
-        filt2 = f
-        filt2.reset()
     }
 
     // MARK: audio main loop
@@ -126,7 +113,9 @@ public final class Contest: AudioSampleProvider {
             guard s.state == .sending else { continue }
             let blk = s.getBlock()
             let baseBfo = s.currentBfo()
-            for i in 0..<n {
+            // Use blk.count (not n/bufSize) so short blocks at the end of a
+            // station's envelope don't read past the array (which caused clicks).
+            for i in 0..<blk.count {
                 let bfo = baseBfo - ritPhase - Float(i) * TWO_PI * Float(Settings.shared.rit) / Float(DEFAULTRATE)
                 reIm.re[i] += blk[i] * cosf(bfo)
                 reIm.im[i] -= blk[i] * sinf(bfo)
@@ -143,7 +132,7 @@ public final class Contest: AudioSampleProvider {
             let blk = me.getBlock()
             let smg = powf(10, (Settings.shared.selfMonVolume - 0.75) * 4)
             var rfg: Float = 1
-            for i in 0..<n {
+            for i in 0..<blk.count {
                 if Settings.shared.qsk {
                     let target: Float = 1 - blk[i] / me.amplitude
                     if rfg > target {
@@ -160,15 +149,14 @@ public final class Contest: AudioSampleProvider {
             }
         }
 
-        // LPF: Filt2 then Filt (both cascaded on the same data), and every 10
-        // blocks swap them so neither's history grows stale. Faithful to the
-        // original `Filt2.Filter(ReIm); ReIm := Filt.Filter(ReIm);`.
-        var filtered = filt2.filter(reIm)
-        filtered = filt.filter(filtered)
-        if (blockNumber % 10) == 0 { swapFilters() }
+        // LPF: single band-pass filter, applied in-place on reIm.
+        // (Previously we cascaded two filters and swapped them every 10 blocks
+        // to prevent stale history. The swap caused audible clicks at each
+        // transition. A single filter with continuous history is click-free.)
+        filt.filterInPlace(&reIm)
 
         // up-convert to pitch
-        var audio = modul.modulate(filtered)
+        var audio = modul.modulate(reIm)
         // AGC
         audio = agc.process(audio)
 

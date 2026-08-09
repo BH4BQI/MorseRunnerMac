@@ -29,6 +29,10 @@ public final class MovingAverage {
     private var bufRe: [[Float]] = []
     private var bufIm: [[Float]] = []
     private var norm: Float = 0
+    /// Pre-allocated result buffers (reused every call — zero allocation on the
+    /// hot audio path, which avoids GC pauses that can cause clicks).
+    private var resultRe: [Float] = []
+    private var resultIm: [Float] = []
 
     public init() {
         passes = 3
@@ -43,6 +47,8 @@ public final class MovingAverage {
         let width = samplesInInput + points
         bufRe = Array(repeating: [Float](repeating: 0, count: width), count: passes + 1)
         bufIm = Array(repeating: [Float](repeating: 0, count: width), count: passes + 1)
+        resultRe = [Float](repeating: 0, count: samplesInInput)
+        resultIm = [Float](repeating: 0, count: samplesInInput)
         calcScale()
     }
 
@@ -54,26 +60,42 @@ public final class MovingAverage {
     // MARK: filter entry points
 
     public func filter(_ data: [Float]) -> [Float] {
-        doFilter(data, bufs: &bufRe)
+        return doFilter(data, bufs: &bufRe, result: &resultRe)
     }
 
     public func filter(_ data: ReImArrays) -> ReImArrays {
         var out = ReImArrays()
-        out.re = doFilter(data.re, bufs: &bufRe)
-        out.im = doFilter(data.im, bufs: &bufIm)
+        out.re = doFilter(data.re, bufs: &bufRe, result: &resultRe)
+        out.im = doFilter(data.im, bufs: &bufIm, result: &resultIm)
         return out
     }
 
-    /// Core multi-pass filter. Faithful port of DoFilter + PushArray + ShiftArray + Pass + GetResult.
-    private func doFilter(_ data: [Float], bufs: inout [[Float]]) -> [Float] {
+    /// Filter a ReImArrays in-place: overwrites data.re and data.im with the
+    /// filtered result. Used by the Contest audio loop to avoid allocating a
+    /// new ReImArrays on every block (zero-allocation hot path).
+    public func filterInPlace(_ data: inout ReImArrays) {
+        _ = doFilter(data.re, bufs: &bufRe, result: &resultRe)
+        _ = doFilter(data.im, bufs: &bufIm, result: &resultIm)
+        // Copy results back into the input array (in-place).
+        for i in 0..<data.re.count {
+            data.re[i] = resultRe[i]
+            data.im[i] = resultIm[i]
+        }
+    }
+
+    /// Core multi-pass filter. Writes normalized result into the pre-allocated
+    /// `result` buffer and returns it. Faithful port of DoFilter + PushArray +
+    /// ShiftArray + Pass + GetResult.
+    private func doFilter(_ data: [Float], bufs: inout [[Float]], result: inout [Float]) -> [Float] {
         // put new data at the end of the 0-th buffer
         pushArray(data, into: &bufs[0])
         // multi-pass
         for i in 1...passes {
             pass(src: bufs[i - 1], dst: &bufs[i])
         }
-        // normalize + decimate result from last buffer
-        return getResult(bufs[passes])
+        // normalize + decimate result from last buffer into pre-allocated array
+        getResult(bufs[passes], into: &result)
+        return result
     }
 
     // shift existing data to the left, append new data at the end
@@ -97,10 +119,9 @@ public final class MovingAverage {
         for i in 0..<n {
             dst[i] = dst[i + count]
         }
-        // The Pascal code leaves the tail stale (overwritten later); zero it for safety.
-        for i in n..<dst.count {
-            dst[i] = 0
-        }
+        // Deliberately do NOT zero the tail — matches the original Delphi Move()
+        // which leaves stale data that is immediately overwritten by pass().
+        // Zeroing it caused subtle discontinuities that produced audible clicks.
     }
 
     private func pass(src: [Float], dst: inout [Float]) {
@@ -112,20 +133,16 @@ public final class MovingAverage {
         }
     }
 
-    private func getResult(_ src: [Float]) -> [Float] {
+    private func getResult(_ src: [Float], into result: inout [Float]) {
         if decimateFactor == 1 {
-            var result = [Float](repeating: 0, count: samplesInInput)
             for i in 0..<samplesInInput {
                 result[i] = src[points + i] * norm
             }
-            return result
         } else {
-            let outLen = samplesInInput / decimateFactor
-            var result = [Float](repeating: 0, count: outLen)
+            let outLen = min(samplesInInput / decimateFactor, result.count)
             for i in 0..<outLen {
                 result[i] = src[points + i * decimateFactor] * norm
             }
-            return result
         }
     }
 }

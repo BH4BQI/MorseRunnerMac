@@ -46,6 +46,8 @@ public final class VolumeControl {
     private var len: Int = 0
     private var bufIdx: Int = 0
     private var attackShape: [Float] = []
+    /// Pre-allocated output buffer (reused every call — zero allocation).
+    private var resultBuf: [Float] = []
 
     public init() {
         maxOut = 20000
@@ -139,17 +141,17 @@ public final class VolumeControl {
 
     public func process(_ data: [Float]) -> [Float] {
         isOverload = false
-        var result = [Float](repeating: 0, count: data.count)
+        if resultBuf.count != data.count { resultBuf = [Float](repeating: 0, count: data.count) }
         if agcEnabled {
             for i in 0..<data.count {
-                result[i] = applyAgc(data[i])
+                resultBuf[i] = applyAgc(data[i])
             }
         } else {
             for i in 0..<data.count {
-                result[i] = applyDefaultGain(data[i])
+                resultBuf[i] = applyDefaultGain(data[i])
             }
         }
-        return result
+        return resultBuf
     }
 
     public func process(_ data: ReImArrays) -> ReImArrays {

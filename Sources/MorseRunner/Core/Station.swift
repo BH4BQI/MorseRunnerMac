@@ -100,21 +100,19 @@ public class Station {
         return result
     }
 
-    /// Fetch one audio block (and advance the TX buffer).
+    /// Fetch one audio block (and advance the TX buffer). Returns a short block
+    /// (fewer than bufSize samples) when near the end of the envelope — the
+    // caller uses blk.count, NOT bufSize, to avoid mixing in stale/zero data
+    // that causes clicks.
     public func getBlock() -> [Float] {
         let bufSize = Settings.shared.bufSize
         let end = min(sendPos + bufSize, envelope.count)
         let block = Array(envelope[sendPos..<end])
-        // pad to bufSize if near the end of the envelope
-        var result = block
-        if result.count < bufSize {
-            result.append(contentsOf: [Float](repeating: 0, count: bufSize - result.count))
-        }
         sendPos += bufSize
         if sendPos >= envelope.count {
             envelope.removeAll(keepingCapacity: true)
         }
-        return result
+        return block
     }
 
     public func sendMsg(_ aMsg: StationMessage) {
