@@ -148,8 +148,13 @@ public final class MainController: NSObject, NSWindowDelegate,
         guard idx >= 0, idx < bandwidthPopup.numberOfItems else { return }
         Settings.shared.bandWidth = 100 + idx * 50
         bandwidthPopup.selectItem(at: idx)
-        Tst.filt.points = Int((0.7 * Float(DEFAULTRATE) / Float(Settings.shared.bandWidth)).rounded())
-        Tst.filt.gainDb = 10 * log10f(500.0 / Float(Settings.shared.bandWidth))
+        let pts = Int((0.7 * Float(DEFAULTRATE) / Float(Settings.shared.bandWidth)).rounded())
+        let gain = 10 * log10f(500.0 / Float(Settings.shared.bandWidth))
+        // Update all four filters in the dual-pair cascade.
+        for f in [Tst.filtA1, Tst.filtA2, Tst.filtB1, Tst.filtB2] {
+            f.points = pts
+            f.gainDb = gain
+        }
         updateRitIndicator()
     }
     public func setWpm(clamping wpm: Int, lo: Int, hi: Int) {
