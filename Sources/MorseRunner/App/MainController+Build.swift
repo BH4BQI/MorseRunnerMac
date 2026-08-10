@@ -556,6 +556,43 @@ extension MainController {
             NSWorkspace.shared.open(url)
         }
     }
+
+    /// Export the QSO log to ADIF or Cabrillo format via NSSavePanel.
+    @objc func exportQsoLog() {
+        guard !QsoLog.shared.qsoList.isEmpty else {
+            showAlert("No QSOs to export. Run a contest first.")
+            return
+        }
+        let panel = NSSavePanel()
+        panel.title = "Export QSO Log"
+        panel.prompt = "Export"
+        // Default to ADIF; user can change extension in the filename.
+        panel.nameFieldStringValue = "MorseRunner.adi"
+        panel.allowedContentTypes = [.data, .text]  // allow any extension
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.performExport(to: url)
+        }
+    }
+
+    private func performExport(to url: URL) {
+        let myCall = Settings.shared.call
+        let ext = url.pathExtension.lowercased()
+        let content: String
+        switch ext {
+        case "cab", "log", "cbr":
+            content = QsoLog.shared.exportToCabrillo(myCall: myCall, mode: "CW")
+        default:  // .adi, .adif, or anything else → ADIF
+            content = QsoLog.shared.exportToADIF(myCall: myCall)
+        }
+        do {
+            try content.write(to: url, atomically: true, encoding: .utf8)
+            showAlert("Exported \(QsoLog.shared.qsoList.count) QSOs to:\n\(url.lastPathComponent)")
+        } catch {
+            showAlert("Export failed: \(error.localizedDescription)")
+        }
+    }
+
     @objc func toggleRecording() {
         Settings.shared.saveWav = !Settings.shared.saveWav
         refreshMenuStates()
@@ -736,6 +773,12 @@ extension MainController {
     }
 
     @objc func setWpmMenu(_ sender: NSMenuItem) { setWpm(clamping: sender.tag, lo: 10, hi: 120) }
+    @objc func setSpeedRangeMenu(_ sender: NSMenuItem) {
+        let hi = sender.representedObject as? Int ?? 0
+        Settings.shared.wpmLow = sender.tag
+        Settings.shared.wpmHigh = hi
+        refreshMenuStates()
+    }
     @objc func setPitchMenu(_ sender: NSMenuItem) { setPitch(sender.tag) }
     @objc func setBwMenu(_ sender: NSMenuItem) { setBw(sender.tag) }
     @objc func setMonLevelMenu(_ sender: NSMenuItem) {
@@ -777,6 +820,11 @@ extension MainController {
         for item in zoomMenuItems {
             item.state = (item.tag == Settings.shared.zoom) ? .on : .off
         }
+        // CW Speed Range: tick the active range (match low+high).
+        for item in speedRangeMenuItems {
+            let hi = item.representedObject as? Int ?? 0
+            item.state = (item.tag == Settings.shared.wpmLow && hi == Settings.shared.wpmHigh) ? .on : .off
+        }
     }
 
     // MARK: - menu bar
@@ -798,6 +846,8 @@ extension MainController {
         let fileMenu = NSMenu(title: "File")
         fileMenu.addItem(withTitle: "View Score Table", action: #selector(viewScoreTable), keyEquivalent: "")
         fileMenu.addItem(withTitle: "View Hi-Score Web Page...", action: #selector(viewScoreBoard), keyEquivalent: "")
+        let exportItem = fileMenu.addItem(withTitle: "Export QSO Log…", action: #selector(exportQsoLog), keyEquivalent: "")
+        exportItem.target = self
         fileMenu.addItem(.separator())
         let recItem = fileMenu.addItem(withTitle: "Audio Recording Enabled", action: #selector(toggleRecording), keyEquivalent: "")
         recItem.target = self
@@ -850,6 +900,29 @@ extension MainController {
                               keyEquivalent: "").tag = w
         }
         speedItem.submenu = speedMenu
+        // CW Speed Range submenu — DX stations pick a random WPM in [low, high].
+        let speedRangeItem = settingsMenu.addItem(withTitle: "CW Speed Range", action: nil, keyEquivalent: "")
+        let speedRangeMenu = NSMenu(title: "CW Speed Range")
+        let ranges: [(String, Int, Int)] = [
+            ("Off (default random)", 0, 0),
+            ("15 – 25 WPM", 15, 25),
+            ("20 – 30 WPM", 20, 30),
+            ("25 – 35 WPM", 25, 35),
+            ("30 – 40 WPM", 30, 40),
+            ("20 – 40 WPM", 20, 40),
+            ("15 – 40 WPM", 15, 40),
+        ]
+        speedRangeMenuItems = []
+        for (label, lo, hi) in ranges {
+            let item = speedRangeMenu.addItem(withTitle: label, action: #selector(setSpeedRangeMenu(_:)),
+                                               keyEquivalent: "")
+            item.tag = lo
+            item.target = self
+            // Encode high in the item's representedObject for retrieval.
+            item.representedObject = hi
+            speedRangeMenuItems.append(item)
+        }
+        speedRangeItem.submenu = speedRangeMenu
         // CW Pitch submenu
         let pitchItem = settingsMenu.addItem(withTitle: "CW Pitch", action: nil, keyEquivalent: "")
         let pitchMenu = NSMenu(title: "CW Pitch")

@@ -44,6 +44,10 @@ public final class Settings {
     public var call: String = "VE3NEA"
     public var hamName: String = ""
     public var wpm: Int = 30
+    /// Variable CW speed: DX stations pick a random WPM in [wpmLow, wpmHigh].
+    /// 0 = disabled (use original 0.5×~1.0× random scaling off `wpm`).
+    public var wpmLow: Int = 0
+    public var wpmHigh: Int = 0
     public var bandWidth: Int = 500
     public var pitch: Int = 600
     public var qsk: Bool = true
@@ -212,6 +216,8 @@ extension Settings {
             pitch = 300 + (sInt(stn, "Pitch") ?? 3) * 50
             bandWidth = 100 + (sInt(stn, "BandWidth") ?? 9) * 50
             wpm = max(10, min(120, sInt(stn, "Wpm") ?? wpm))
+            wpmLow = max(0, min(120, sInt(stn, "WpmLow") ?? wpmLow))
+            wpmHigh = max(0, min(120, sInt(stn, "WpmHigh") ?? wpmHigh))
             qsk = sBool(stn, "Qsk") ?? qsk
             callsFromKeyer = sBool(stn, "CallsFromKeyer") ?? callsFromKeyer
             hamName = sStr(stn, "Name") ?? hamName
@@ -267,6 +273,8 @@ extension Settings {
         lines.append("Pitch=\(pitchIdx)")
         lines.append("BandWidth=\(bwIdx)")
         lines.append("Wpm=\(wpm)")
+        lines.append("WpmLow=\(wpmLow)")
+        lines.append("WpmHigh=\(wpmHigh)")
         lines.append("Qsk=\(b2i(qsk))")
         lines.append("SelfMonVolume=\(smRaw)")
         lines.append("SaveWav=\(b2i(saveWav))")

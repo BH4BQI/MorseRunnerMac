@@ -325,4 +325,80 @@ public final class QsoLog {
         let s = total % 60
         return String(format: "%02d:%02d:%02d", h, m, s)
     }
+
+    // MARK: - QSO export
+
+    /// Export all QSOs to ADIF (Amateur Data Interchange Format).
+    /// Compatible with N1MM, DXLog, Logger32, etc.
+    public func exportToADIF(myCall: String) -> String {
+        var lines: [String] = []
+        // ADIF header
+        lines.append("# MorseRunner macOS QSO Export")
+        lines.append("# Created: \(ISO8601DateFormatter().string(from: Date()))")
+        lines.append("<ADIF_VER:5>3.1.4")
+        lines.append("<PROGRAMID:12>MORSERUNNER")
+        lines.append("<EOH>")
+        // Each QSO as an ADIF record
+        for q in qsoList {
+            let timeStr = formatClock(q.t)
+            let hhmm = String(timeStr.prefix(4)).replacingOccurrences(of: ":", with: "")
+            let dateStr = adifDateString()
+            let band = "20m"  // MorseRunner is a simulator; use a nominal band
+            var rec = "<call:\(q.call.count)>\(q.call) "
+            rec += "<band:\(band.count + 1)>\(band) "
+            rec += "<mode:2>CW "
+            rec += "<qso_date:\(dateStr.count)>\(dateStr) "
+            rec += "<time_on:\(hhmm.count)>\(hhmm) "
+            rec += "<rst_rcvd:3>\(String(format: "%03d", q.rst)) "
+            rec += "<rst_sent:3>\(String(format: "%03d", Tst.me.rst)) "
+            rec += "<srx:\(String(q.nr).count)>\(q.nr) "
+            rec += "<stx:\(String(Tst.me.nr).count)>\(Tst.me.nr) "
+            rec += "<station_callsign:\(myCall.count)>\(myCall) "
+            rec += "<eor>"
+            lines.append(rec)
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// Export all QSOs to Cabrillo format (contest log submission).
+    public func exportToCabrillo(myCall: String, mode: String) -> String {
+        let catMode = Settings.shared.runMode == .hst ? "HST" : "CW"
+        var lines: [String] = []
+        lines.append("START-OF-LOG: 3.0")
+        lines.append("CALLSIGN: \(myCall)")
+        lines.append("CATEGORY-MODE: \(catMode)")
+        lines.append("CLAIMED-SCORE: \(scoreRawLabels_safe())")
+        lines.append("OPERATORS: \(myCall)")
+        lines.append("CREATED-BY: MorseRunner macOS")
+        lines.append("SOAPBOX: MorseRunner CW Contest Simulator (macOS port)")
+        for q in qsoList {
+            let freq = "20"  // nominal
+            let timeStr = formatClock(q.t)
+            let hhmm = String(timeStr.prefix(4)).replacingOccurrences(of: ":", with: "")
+            // Format: FREQ MODE DATE TIME MYCALL RST NR CALL RST NR
+            lines.append("QSO: \(freq) \(catMode) \(cabrilloDateString()) \(hhmm) \(myCall) \(String(format: "%03d", Tst.me.rst)) \(String(format: "%04d", Tst.me.nr)) \(q.call) \(String(format: "%03d", q.rst)) \(String(format: "%04d", q.nr))")
+        }
+        lines.append("END-OF-LOG:")
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    private func scoreRawLabels_safe() -> Int {
+        // Read the raw score from the last computed stats without touching UI.
+        var pts = qsoList.count
+        var pfxSet = Set<String>()
+        for q in qsoList { pfxSet.insert(q.pfx) }
+        return pts * pfxSet.count
+    }
+
+    private func adifDateString() -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyyMMdd"
+        return f.string(from: Date())
+    }
+
+    private func cabrilloDateString() -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: Date())
+    }
 }

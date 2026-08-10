@@ -75,6 +75,7 @@ public final class MainController: NSObject, NSWindowDelegate,
     var callsignInfoMenuItem: NSMenuItem?
     var themeMenuItems: [NSMenuItem] = []
     var zoomMenuItems: [NSMenuItem] = []
+    var speedRangeMenuItems: [NSMenuItem] = []
     /// Shared field editor for the contest input fields, so command keys reach
     /// the controller before being inserted as text.
     var fieldEditor: ContestFieldEditor?

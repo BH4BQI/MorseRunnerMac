@@ -39,6 +39,13 @@ public final class DxOperator {
 
     public func getWpm() -> Int {
         if Settings.shared.runMode == .hst { return Settings.shared.wpm }
+        // If the user set a CW speed range, pick uniformly within [wpmLow, wpmHigh].
+        // Otherwise use the original behaviour: wpm × 0.5~1.0 random.
+        if Settings.shared.wpmLow > 0 && Settings.shared.wpmHigh > 0 {
+            let lo = Settings.shared.wpmLow
+            let hi = max(lo, Settings.shared.wpmHigh)
+            return Int((Float(lo) + Float(hi - lo) * rnd()).rounded())
+        }
         return Int((Float(Settings.shared.wpm) * 0.5 * (1 + rnd())).rounded())
     }
 
