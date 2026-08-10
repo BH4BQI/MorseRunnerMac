@@ -80,9 +80,9 @@ extension MainController {
         if event.keyCode == kVK_PageUp { incSpeed(); return true }
         if event.keyCode == kVK_PageDown { decSpeed(); return true }
 
-        // Arrow Up/Down = RIT (or bandwidth with Ctrl)
+        // Arrow Up/Down = RIT; Ctrl-↑/↓ or Cmd-↑/↓ = bandwidth
         if event.keyCode == kVK_UpArrow {
-            if mods.contains(.control) {
+            if mods.contains(.control) || mods.contains(.command) {
                 if Settings.shared.runMode != .hst { setBw(bandwidthPopup.indexOfSelectedItem + 1) }
             } else {
                 incRit(1)
@@ -90,7 +90,7 @@ extension MainController {
             return true
         }
         if event.keyCode == kVK_DownArrow {
-            if mods.contains(.control) {
+            if mods.contains(.control) || mods.contains(.command) {
                 if Settings.shared.runMode != .hst { setBw(bandwidthPopup.indexOfSelectedItem - 1) }
             } else {
                 incRit(-1)
