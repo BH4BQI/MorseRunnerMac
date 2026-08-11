@@ -87,6 +87,11 @@ public final class MainController: NSObject, NSWindowDelegate,
     /// Shared field editor for the contest input fields, so command keys reach
     /// the controller before being inserted as text.
     var fieldEditor: ContestFieldEditor?
+    /// Shared instance accessible by ContestTextFieldCell.fieldEditor(forView:).
+    var contestFieldEditor: ContestFieldEditor {
+        if fieldEditor == nil { fieldEditor = ContestFieldEditor() }
+        return fieldEditor!
+    }
 
     // MARK: - state
 

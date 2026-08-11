@@ -274,7 +274,7 @@ extension MainController {
         // Call / RST / Nr. labels + fields
         place(NSTextField(labelWithString: "Call").withFont(.systemFont(ofSize: 10)),
               in: bottom, left: 16, top: 12, w: 30, h: 15)
-        callField = NSTextField(string: "")
+        callField = ContestTextField(string: "")
         callField.font = .systemFont(ofSize: 14)
         callField.alignment = .center
         callField.formatter = UpperCaseFormatter()
@@ -285,7 +285,7 @@ extension MainController {
 
         place(NSTextField(labelWithString: "RST").withFont(.systemFont(ofSize: 10)),
               in: bottom, left: 172, top: 12, w: 30, h: 15)
-        rstField = NSTextField(string: "")
+        rstField = ContestTextField(string: "")
         rstField.font = .systemFont(ofSize: 14)
         rstField.alignment = .center
         rstField.formatter = DigitsOnlyFormatter(maxLength: 3)
@@ -296,7 +296,7 @@ extension MainController {
 
         place(NSTextField(labelWithString: "Nr.").withFont(.systemFont(ofSize: 10)),
               in: bottom, left: 224, top: 12, w: 24, h: 15)
-        nrField = NSTextField(string: "")
+        nrField = ContestTextField(string: "")
         nrField.font = .systemFont(ofSize: 14)
         nrField.alignment = .center
         nrField.formatter = DigitsOnlyFormatter(maxLength: 6)
