@@ -840,12 +840,12 @@ extension MainController {
         for item in bwMenuItems {
             item.state = (item.tag == bwIdx) ? .on : .off
         }
-        // Mon. Level: tick the item closest to the current slider value.
+        // Mon. Level: tick the item whose tag matches the raw INI encoding.
+        // Raw value = Round(80 × (slider_value - 0.75)), same formula as INI save.
+        // Menu tags are the raw values: -60, -40, -20, 0, 20.
         let smRaw = Int(((Settings.shared.selfMonVolume - 0.75) * 80.0).rounded())
         for item in monMenuItems {
-            // Each menu tag is a multiple of 10 (0,10,20,30,40). Find nearest.
-            let diff = abs(item.tag - smRaw)
-            item.state = (diff < 5) ? .on : .off
+            item.state = (item.tag == smRaw) ? .on : .off
         }
         // Activity: tick the item matching the current activity.
         for item in activityMenuItems {
@@ -989,7 +989,9 @@ extension MainController {
         let monItem = settingsMenu.addItem(withTitle: "Mon. Level", action: nil, keyEquivalent: "")
         let monMenu = NSMenu(title: "Mon. Level")
         monMenuItems = []
-        for (label, val) in [("-60 dB", 0), ("-40 dB", 10), ("-20 dB", 20), ("0 dB", 30), ("+20 dB", 40)] {
+        // Tags match the original Delphi DFM exactly: -60, -40, -20, 0, 20.
+        // Slider value = tag / 80 + 0.75 (from SelfMonClick in Main.pas).
+        for (label, val) in [("-60 dB", -60), ("-40 dB", -40), ("-20 dB", -20), ("0 dB", 0), ("+20 dB", 20)] {
             let item = monMenu.addItem(withTitle: label, action: #selector(setMonLevelMenu(_:)),
                            keyEquivalent: "")
             item.tag = val
