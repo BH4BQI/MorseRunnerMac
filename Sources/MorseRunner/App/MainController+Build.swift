@@ -435,7 +435,7 @@ extension MainController {
         return (0..<14).map { String(300 + $0 * 50) }
     }
     private func bandwidthItems() -> [String] {
-        return (0..<17).map { String(100 + $0 * 50) }
+        return (0..<11).map { String(100 + $0 * 50) }
     }
 
     // MARK: - control actions
@@ -453,13 +453,14 @@ extension MainController {
         refreshMenuStates()
         window.makeFirstResponder(callField)
     }
-    @objc func activityChanged() { Settings.shared.activity = activityField.integerValue }
+    @objc func activityChanged() { Settings.shared.activity = activityField.integerValue; refreshMenuStates() }
     @objc func durationChanged() {
         Settings.shared.duration = durationField.integerValue
         histo.reCalc(durationField.integerValue)
     }
     @objc func volumeChanged() {
         Settings.shared.selfMonVolume = volumeSlider.floatValue
+        refreshMenuStates()
     }
     @objc func msgClicked(_ sender: NSButton) {
         guard let msg = StationMessage(rawValue: sender.tag) else { return }
@@ -825,6 +826,39 @@ extension MainController {
             let hi = item.representedObject as? Int ?? 0
             item.state = (item.tag == Settings.shared.wpmLow && hi == Settings.shared.wpmHigh) ? .on : .off
         }
+        // CW Speed: tick the item matching the current WPM.
+        for item in wpmMenuItems {
+            item.state = (item.tag == Settings.shared.wpm) ? .on : .off
+        }
+        // CW Pitch: tick the item matching the current pitch index.
+        let pitchIdx = (Settings.shared.pitch - 300) / 50
+        for item in pitchMenuItems {
+            item.state = (item.tag == pitchIdx) ? .on : .off
+        }
+        // CW Bandwidth: tick the item matching the current bandwidth index.
+        let bwIdx = (Settings.shared.bandWidth - 100) / 50
+        for item in bwMenuItems {
+            item.state = (item.tag == bwIdx) ? .on : .off
+        }
+        // Mon. Level: tick the item closest to the current slider value.
+        let smRaw = Int(((Settings.shared.selfMonVolume - 0.75) * 80.0).rounded())
+        for item in monMenuItems {
+            // Each menu tag is a multiple of 10 (0,10,20,30,40). Find nearest.
+            let diff = abs(item.tag - smRaw)
+            item.state = (diff < 5) ? .on : .off
+        }
+        // Activity: tick the item matching the current activity.
+        for item in activityMenuItems {
+            item.state = (item.tag == Settings.shared.activity) ? .on : .off
+        }
+        // Duration: tick the item matching the current duration.
+        for item in durationMenuItems {
+            item.state = (item.tag == Settings.shared.duration) ? .on : .off
+        }
+        // Competition Duration: tick the item matching compDuration.
+        for item in compDurationMenuItems {
+            item.state = (item.tag == Settings.shared.compDuration) ? .on : .off
+        }
     }
 
     // MARK: - menu bar
@@ -895,9 +929,13 @@ extension MainController {
         // CW Speed submenu (10..60 WPM in 5 WPM steps)
         let speedItem = settingsMenu.addItem(withTitle: "CW Speed", action: nil, keyEquivalent: "")
         let speedMenu = NSMenu(title: "CW Speed")
+        wpmMenuItems = []
         for w in stride(from: 10, through: 60, by: 5) {
-            speedMenu.addItem(withTitle: "\(w) WPM", action: #selector(setWpmMenu(_:)),
-                              keyEquivalent: "").tag = w
+            let item = speedMenu.addItem(withTitle: "\(w) WPM", action: #selector(setWpmMenu(_:)),
+                              keyEquivalent: "")
+            item.tag = w
+            item.target = self
+            wpmMenuItems.append(item)
         }
         speedItem.submenu = speedMenu
         // CW Speed Range submenu — DX stations pick a random WPM in [low, high].
@@ -926,25 +964,37 @@ extension MainController {
         // CW Pitch submenu
         let pitchItem = settingsMenu.addItem(withTitle: "CW Pitch", action: nil, keyEquivalent: "")
         let pitchMenu = NSMenu(title: "CW Pitch")
+        pitchMenuItems = []
         for i in 0..<14 {
-            pitchMenu.addItem(withTitle: "\(300 + i*50) Hz", action: #selector(setPitchMenu(_:)),
-                              keyEquivalent: "").tag = i
+            let item = pitchMenu.addItem(withTitle: "\(300 + i*50) Hz", action: #selector(setPitchMenu(_:)),
+                              keyEquivalent: "")
+            item.tag = i
+            item.target = self
+            pitchMenuItems.append(item)
         }
         pitchItem.submenu = pitchMenu
-        // CW Bandwidth submenu
+        // CW Bandwidth submenu — 11 items (100-600 Hz), matching the popup.
         let bwItem = settingsMenu.addItem(withTitle: "CW Bandwidth", action: nil, keyEquivalent: "")
         let bwMenu = NSMenu(title: "CW Bandwidth")
-        for i in 0..<9 {
-            bwMenu.addItem(withTitle: "\(100 + i*50) Hz", action: #selector(setBwMenu(_:)),
-                          keyEquivalent: "").tag = i
+        bwMenuItems = []
+        for i in 0..<11 {
+            let item = bwMenu.addItem(withTitle: "\(100 + i*50) Hz", action: #selector(setBwMenu(_:)),
+                          keyEquivalent: "")
+            item.tag = i
+            item.target = self
+            bwMenuItems.append(item)
         }
         bwItem.submenu = bwMenu
         // Mon. Level submenu
         let monItem = settingsMenu.addItem(withTitle: "Mon. Level", action: nil, keyEquivalent: "")
         let monMenu = NSMenu(title: "Mon. Level")
+        monMenuItems = []
         for (label, val) in [("-60 dB", 0), ("-40 dB", 10), ("-20 dB", 20), ("0 dB", 30), ("+20 dB", 40)] {
-            monMenu.addItem(withTitle: label, action: #selector(setMonLevelMenu(_:)),
-                           keyEquivalent: "").tag = val
+            let item = monMenu.addItem(withTitle: label, action: #selector(setMonLevelMenu(_:)),
+                           keyEquivalent: "")
+            item.tag = val
+            item.target = self
+            monMenuItems.append(item)
         }
         monItem.submenu = monMenu
         settingsMenu.addItem(.separator())
@@ -958,27 +1008,39 @@ extension MainController {
         // Activity submenu
         let actItem = settingsMenu.addItem(withTitle: "Activity", action: nil, keyEquivalent: "")
         let actMenu = NSMenu(title: "Activity")
+        activityMenuItems = []
         for a in 1...9 {
-            actMenu.addItem(withTitle: "\(a)", action: #selector(setActivityMenu(_:)),
-                           keyEquivalent: "").tag = a
+            let item = actMenu.addItem(withTitle: "\(a)", action: #selector(setActivityMenu(_:)),
+                           keyEquivalent: "")
+            item.tag = a
+            item.target = self
+            activityMenuItems.append(item)
         }
         actItem.submenu = actMenu
         settingsMenu.addItem(.separator())
         // Duration submenu
         let durItem = settingsMenu.addItem(withTitle: "Duration", action: nil, keyEquivalent: "")
         let durMenu = NSMenu(title: "Duration")
+        durationMenuItems = []
         for d in [5, 10, 15, 30, 60, 90, 120] {
-            durMenu.addItem(withTitle: "\(d) min", action: #selector(setDurationMenu(_:)),
-                           keyEquivalent: "").tag = d
+            let item = durMenu.addItem(withTitle: "\(d) min", action: #selector(setDurationMenu(_:)),
+                           keyEquivalent: "")
+            item.tag = d
+            item.target = self
+            durationMenuItems.append(item)
         }
         durItem.submenu = durMenu
         // Competition Duration submenu — the default session length for WPX
         // and HST modes. Stored as CompetitionDuration in the INI.
         let compDurItem = settingsMenu.addItem(withTitle: "Competition Duration", action: nil, keyEquivalent: "")
         let compDurMenu = NSMenu(title: "Competition Duration")
+        compDurationMenuItems = []
         for d in [5, 10, 15, 30, 60, 90, 120] {
-            compDurMenu.addItem(withTitle: "\(d) min", action: #selector(setCompDurationMenu(_:)),
-                                keyEquivalent: "").tag = d
+            let item = compDurMenu.addItem(withTitle: "\(d) min", action: #selector(setCompDurationMenu(_:)),
+                                keyEquivalent: "")
+            item.tag = d
+            item.target = self
+            compDurationMenuItems.append(item)
         }
         compDurItem.submenu = compDurMenu
         settingsMenu.addItem(withTitle: "HST Operator…", action: #selector(editOperator), keyEquivalent: "")

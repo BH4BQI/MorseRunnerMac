@@ -76,6 +76,14 @@ public final class MainController: NSObject, NSWindowDelegate,
     var themeMenuItems: [NSMenuItem] = []
     var zoomMenuItems: [NSMenuItem] = []
     var speedRangeMenuItems: [NSMenuItem] = []
+    // Settings submenu item arrays for tick-mark sync.
+    var wpmMenuItems: [NSMenuItem] = []
+    var pitchMenuItems: [NSMenuItem] = []
+    var bwMenuItems: [NSMenuItem] = []
+    var monMenuItems: [NSMenuItem] = []
+    var activityMenuItems: [NSMenuItem] = []
+    var durationMenuItems: [NSMenuItem] = []
+    var compDurationMenuItems: [NSMenuItem] = []
     /// Shared field editor for the contest input fields, so command keys reach
     /// the controller before being inserted as text.
     var fieldEditor: ContestFieldEditor?
@@ -121,6 +129,8 @@ public final class MainController: NSObject, NSWindowDelegate,
         applyTheme(Settings.shared.theme)
         // Apply the saved zoom level (100% / 150% / 200%).
         applyZoom(Settings.shared.zoom)
+        // Sync all menu tick marks with the loaded settings.
+        refreshMenuStates()
     }
 
     public func show() {
@@ -140,10 +150,11 @@ public final class MainController: NSObject, NSWindowDelegate,
         Tst.me.myCall = call
     }
     public func setPitch(_ idx: Int) {
-        let clamped = max(0, min(pitchPopup.numberOfItems - 1, idx))
-        Settings.shared.pitch = 300 + clamped * 50
-        pitchPopup.selectItem(at: clamped)
+        guard idx >= 0, idx < pitchPopup.numberOfItems else { return }
+        Settings.shared.pitch = 300 + idx * 50
+        pitchPopup.selectItem(at: idx)
         Tst.modul.carrierFreq = Float(Settings.shared.pitch)
+        refreshMenuStates()
     }
     public func setBw(_ idx: Int) {
         guard idx >= 0, idx < bandwidthPopup.numberOfItems else { return }
@@ -157,28 +168,35 @@ public final class MainController: NSObject, NSWindowDelegate,
             f.gainDb = gain
         }
         updateRitIndicator()
+        refreshMenuStates()
     }
     public func setWpm(clamping wpm: Int, lo: Int, hi: Int) {
         let v = max(lo, min(hi, wpm))
         Settings.shared.wpm = v
         wpmField.integerValue = v
         Tst.me.wpm = v
+        refreshMenuStates()
     }
     public func setQsk(_ value: Bool) {
         Settings.shared.qsk = value
         qskCheckbox.state = value ? .on : .off
     }
     public func setSelfMonVolume(raw: Int) {
-        volumeSlider.floatValue = Float(raw) / 80.0 + 0.75
+        let val = Float(raw) / 80.0 + 0.75
+        volumeSlider.floatValue = val
+        Settings.shared.selfMonVolume = val
+        refreshMenuStates()
     }
     public func setActivity(_ value: Int) {
         Settings.shared.activity = value
         activityField.integerValue = value
+        refreshMenuStates()
     }
     public func setDuration(_ value: Int) {
         Settings.shared.duration = value
         durationField.integerValue = value
         histo.reCalc(value)
+        refreshMenuStates()
     }
 
     /// Set the competition duration (WPX / HST default session length).
@@ -193,6 +211,7 @@ public final class MainController: NSObject, NSWindowDelegate,
             durationField.integerValue = clamped
             histo.reCalc(clamped)
         }
+        refreshMenuStates()
     }
 
     func readCheckboxes() {
