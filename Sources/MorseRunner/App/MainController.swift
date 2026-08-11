@@ -118,6 +118,13 @@ public final class MainController: NSObject, NSWindowDelegate,
         LoadCallList()
         ArrlList.shared.loadIfNeeded()
         Ini.load(into: self)
+        // Sync band-condition checkboxes with loaded Settings (Ini.load sets
+        // Settings.shared but doesn't touch the checkbox UI).
+        qrnCheckbox.state = Settings.shared.qrn ? .on : .off
+        qrmCheckbox.state = Settings.shared.qrm ? .on : .off
+        qsbCheckbox.state = Settings.shared.qsb ? .on : .off
+        flutterCheckbox.state = Settings.shared.flutter ? .on : .off
+        lidsCheckbox.state = Settings.shared.lids ? .on : .off
         makeKeyer()
         Keyer.rate = DEFAULTRATE
         Keyer.bufSize = Settings.shared.bufSize
