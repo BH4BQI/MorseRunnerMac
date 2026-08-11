@@ -111,14 +111,23 @@ extension MainController {
 
     private func processSpace() {
         mustAdvance = false
-        let firstResponder = window.firstResponder
-        if firstResponder === callField.currentEditor() {
-            if rstField.stringValue.isEmpty { rstField.stringValue = "599" }
-            window.makeFirstResponder(nrField)
-        } else if firstResponder === rstField.currentEditor() {
+        // Determine which contest field has focus (same approach as moveFocus).
+        let cycle = [callField, rstField, nrField]
+        guard let current = window.firstResponder as? NSTextView,
+              let host = current.delegate as? NSTextField,
+              let idx = cycle.firstIndex(where: { $0 === host }) else {
+            // Not in a contest field — focus Call.
+            window.makeFirstResponder(callField)
+            return
+        }
+        let field = cycle[idx]
+        // Original ProcessSpace: from Call or RST, fill RST with 599 if empty,
+        // then jump to NR. From NR, jump back to Call.
+        if field === callField || field === rstField {
             if rstField.stringValue.isEmpty { rstField.stringValue = "599" }
             window.makeFirstResponder(nrField)
         } else {
+            // From NR → Call
             window.makeFirstResponder(callField)
         }
     }
