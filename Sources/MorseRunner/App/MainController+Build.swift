@@ -1252,6 +1252,12 @@ extension MainController: NSTextFieldDelegate {
             rstField.stringValue = "599"
         }
         window.makeFirstResponder(target)
+        // When entering RST with 3 digits, select the middle digit so the user
+        // can immediately type a correction (matches Delphi Edit2Enter).
+        if target === rstField, rstField.stringValue.count == 3,
+           let editor = rstField.currentEditor() {
+            editor.selectedRange = NSRange(location: 1, length: 1)
+        }
     }
 }
 
