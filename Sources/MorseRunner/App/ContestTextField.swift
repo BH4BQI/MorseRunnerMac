@@ -46,9 +46,18 @@ extension MainController {
     public func window(_ window: NSWindow,
                        willReturnFieldEditor editor: AutoreleasingUnsafeMutablePointer<NSObject?>,
                        client: Any?) -> Bool {
-        // Only install for the three contest input fields.
-        guard let field = client as? NSTextField else { return false }
-        if field === callField || field === rstField || field === nrField {
+        // The `client` can be an NSCell (not the NSTextField itself). Resolve
+        // to the owning NSTextField via the cell's controlView.
+        let field: NSTextField?
+        if let tf = client as? NSTextField {
+            field = tf
+        } else if let cell = client as? NSCell, let cv = cell.controlView as? NSTextField {
+            field = cv
+        } else {
+            field = nil
+        }
+        guard let f = field else { return false }
+        if f === callField || f === rstField || f === nrField {
             if fieldEditor == nil {
                 fieldEditor = ContestFieldEditor()
             }
